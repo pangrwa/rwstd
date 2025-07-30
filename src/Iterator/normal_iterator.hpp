@@ -69,7 +69,7 @@ public:
     return NormalIterator(_iterator + n);
   }
 
-  NormalIterator &operator+=(difference_type n) const {
+  NormalIterator &operator+=(difference_type n) {
     this->_iterator += n;
     return *this;
   }
@@ -78,7 +78,7 @@ public:
     return NormalIterator(_iterator - n);
   }
 
-  NormalIterator &operator-=(difference_type n) const {
+  NormalIterator &operator-=(difference_type n) {
     this->_iterator -= n;
     return *this;
   }

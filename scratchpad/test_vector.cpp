@@ -54,4 +54,8 @@ int main() {
   for (const auto &x : test) {
     std::cout << x << " ";
   }
+  std::cout << std::endl;
+
+  std::cout << " testing out temp " << std::endl;
+  rwstd::Vector<int> temp = {1, 2, 3, 4, 5};
 }

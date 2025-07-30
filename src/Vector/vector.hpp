@@ -29,16 +29,26 @@ private:
   size_t _capacity;
 
 public:
-  Vector() : _size{0}, _capacity{2} { _data = new T(2); }
+  Vector() : _size{0}, _capacity{2} { _data = new T[2]; }
 
-  explicit Vector(size_t size) : _size(0), _capacity(size * 2) {
-    _data = new T(_capacity);
+  explicit Vector(size_t size) : _size{size}, _capacity(size * 2) {
+    _data = new T[_capacity];
+    std::fill(_data, _data + _size, T{});
   }
 
   explicit Vector(size_t size, const T &value)
       : _size(size), _capacity(size * 2) {
-    _data = new T(_capacity);
+    _data = new T[_capacity];
     std::fill(_data, _data + _size, value);
+  }
+
+  template <std::input_iterator InputIt>
+  Vector(InputIt first, InputIt last) : Vector() {
+    this->insert(this->cbegin(), first, last);
+  }
+
+  Vector(std::initializer_list<T> init) : Vector() {
+    this->insert(this->cbegin(), init);
   }
 
   /*
@@ -95,19 +105,21 @@ public:
   size_t capacity() const { return _capacity; }
 
   void reserve(size_type new_cap) {
-    T *new_data = new T(new_cap);
+    T *new_data = new T[new_cap];
     std::memcpy(new_data, _data, _size);
     delete[] _data;
     _data = new_data;
     _capacity = new_cap;
   }
 
+  // at all times capcity must be at least size 2 - write test case for this
   void shrink_to_fit() {
-    T *new_data = new T(_size);
+    size_t target_size = std::max(_size, (size_t)2);
+    T *new_data = new T[target_size];
     std::memcpy(new_data, _data, _size);
     delete[] _data;
     _data = new_data;
-    _capacity = _size;
+    _capacity = target_size;
   }
 
   /*
@@ -115,7 +127,7 @@ public:
    */
 
   void clear() {
-    T *new_data = new T(2);
+    T *new_data = new T[2];
     delete[] _data;
     _data = new_data;
     _size = 0;
@@ -130,24 +142,78 @@ public:
     _size++;
   }
 
-  // https://stackoverflow.com/questions/72056842/how-can-i-implement-iterator-insert-const-iterator-position-inputiterator-firs
   iterator insert(const_iterator pos, const T &value) {
     difference_type idx = pos - this->cbegin();
     if (_size == _capacity) {
       _reallocate();
     }
 
-    iterator modifed_pos = this->begin() + idx;
-    std::copy_backward(modifed_pos, this->end(), ++this->end());
-    std::fill(modifed_pos, modifed_pos + 1, value);
+    iterator modified_pos = this->begin() + idx;
+    std::copy_backward(modified_pos, this->end(), ++this->end());
+    std::fill(modified_pos, modified_pos + 1, value);
     _size++;
+
+    return modified_pos;
+  }
+
+  iterator insert(const_iterator pos, T &&value) {
+    difference_type idx = pos - this->cbegin();
+    if (_size == _capacity) {
+      _reallocate();
+    }
+
+    iterator modified_pos = this->begin() + idx;
+    std::copy_backward(modified_pos, this->end(), ++this->end());
+    *modified_pos = std::move(value);
+    _size++;
+    return modified_pos;
+  }
+
+  iterator insert(const_iterator pos, size_type count, const T &value) {
+    difference_type idx = pos - this->cbegin();
+    while (_size + (size_t)count > _capacity) {
+      _reallocate();
+    }
+
+    iterator modified_pos = this->begin() + idx;
+    std::copy_backward(modified_pos, this->end(),
+                       this->end() + (difference_type)count);
+    std::fill(modified_pos, modified_pos + (difference_type)count, value);
+
+    _size += count;
+    return modified_pos;
+  }
+
+  template <std::input_iterator InputIt>
+  iterator insert(const_iterator pos, InputIt first, InputIt last) {
+    difference_type idx = pos - this->cbegin();
+    difference_type count = last - first;
+    while (_size + (size_t)count > _capacity) {
+      _reallocate();
+    }
+
+    iterator modified_pos = this->begin() + idx;
+    iterator end_point = this->end() + count;
+    std::copy_backward(modified_pos, this->end(), this->end() + count);
+    for (iterator start_point = modified_pos;
+         start_point != end_point && first != last; ++first) {
+      *start_point = *first;
+      start_point++;
+    }
+
+    _size += (size_t)count;
+    return modified_pos;
+  }
+
+  iterator insert(const_iterator pos, std::initializer_list<T> ilist) {
+    return insert(pos, ilist.begin(), ilist.end());
   }
 
   void pop_back() { _size--; }
 
 private:
   void _reallocate() {
-    T *new_data = new T(_capacity * 2);
+    T *new_data = new T[_capacity * 2];
     std::memcpy(new_data, _data, _size * sizeof(T));
     delete[] _data;
     _data = new_data;
