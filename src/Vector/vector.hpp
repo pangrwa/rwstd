@@ -209,13 +209,50 @@ public:
     return insert(pos, ilist.begin(), ilist.end());
   }
 
+  template <class... Args>
+  iterator emplace(const_iterator pos, Args &&...args) {
+    difference_type idx = pos - this->cbegin();
+    if (_size == _capacity) {
+      _reallocate();
+    }
+
+    iterator modified_pos = this->begin() + idx;
+    std::copy_backward(modified_pos, this->end(), ++this->end());
+
+    // pos should be pointing to a valid value in the vector, i dont think
+    // emplaceconstructible is actually required
+    T new_value = T{std::forward<Args>(args)...};
+    *modified_pos = std::move(new_value);
+    _size++;
+    return modified_pos;
+  }
+
+  template <class... Args>
+  void emplace_back(Args &&...args) {
+    if (_size == _capacity) {
+      _reallocate();
+    }
+
+    T *insertion_point = _data + _size;
+
+    [[maybe_unused]] T *ptr = new (static_cast<void *>(insertion_point))
+        T{std::forward<Args>(args)...};
+    _size++;
+  }
+
   void pop_back() { _size--; }
 
 private:
   void _reallocate() {
     T *new_data = new T[_capacity * 2];
-    std::memcpy(new_data, _data, _size * sizeof(T));
-    delete[] _data;
+    if constexpr (std::is_trivially_copyable_v<T>) {
+      std::memcpy(new_data, _data, _size * sizeof(T));
+      delete[] _data;
+    } else {
+      for (size_t i = 0; i < _size; ++i) {
+        new (new_data + i) T(std::move_if_noexcept(_data[i]));
+      }
+    }
     _data = new_data;
     _capacity = _capacity * 2;
   }

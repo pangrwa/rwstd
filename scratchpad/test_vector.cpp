@@ -56,6 +56,23 @@ int main() {
   }
   std::cout << std::endl;
 
-  std::cout << " testing out temp " << std::endl;
-  rwstd::Vector<int> temp = {1, 2, 3, 4, 5};
+  [[maybe_unused]] rwstd::Vector<int> copy = test;
+  std::cout << "copy: " << std::endl;
+
+  for (const auto &y : test) {
+    std::cout << y << std::endl;
+  }
+
+  [[maybe_unused]] rwstd::Vector<int> move = std::move(copy);
+
+  std::cout << "*******************" << std::endl;
+
+  rwstd::Vector<std::string> move_two = {"a", "b", "c"};
+  move_two.emplace(move_two.cbegin(), "3");
+  move_two.emplace_back("50");
+  for (size_t i = 0; i < move_two.size(); ++i) {
+    std::cout << move_two[i] << " ";
+  }
+
+  std::cout << std::endl;
 }
