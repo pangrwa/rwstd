@@ -252,6 +252,7 @@ private:
       for (size_t i = 0; i < _size; ++i) {
         new (new_data + i) T(std::move_if_noexcept(_data[i]));
       }
+      delete[] _data;
     }
     _data = new_data;
     _capacity = _capacity * 2;
