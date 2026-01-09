@@ -1,7 +1,7 @@
 
 
 add_library(Vector INTERFACE)
-target_compile_optionS(Vector INTERFACE
+target_compile_options(Vector INTERFACE
   -Wall
   -Wextra
   -Wpedantic
