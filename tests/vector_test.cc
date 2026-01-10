@@ -46,7 +46,7 @@ TEST_F(VectorTest, Capacity) {
   rwstd::Vector<int> x = {1};
   x.shrink_to_fit();
   EXPECT_EQ(x.size(), 1);
-  EXPECT_EQ(x.capacity(), 2);
+  EXPECT_EQ(x.capacity(), 1);
 
   v2.shrink_to_fit();
   EXPECT_EQ(v2.size(), 3);
