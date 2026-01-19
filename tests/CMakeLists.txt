@@ -10,5 +10,9 @@ FetchContent_MakeAvailable(googletest)
 add_executable(vector_test vector_test.cc)
 target_link_libraries(vector_test PRIVATE GTest::gtest_main Vector)
 
+add_executable(unordered_map_test unordered_map_test.cc)
+target_link_libraries(unordered_map_test PRIVATE GTest::gtest_main UnorderedMap)
+
 include(GoogleTest)
 gtest_discover_tests(vector_test)
+gtest_discover_tests(unordered_map_test)
