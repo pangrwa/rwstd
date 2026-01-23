@@ -249,56 +249,89 @@ public:
   }
 
   iterator insert(const_iterator pos, const T &value) {
+    if (pos > this->cend()) {
+      return this->begin() + (pos - this->cbegin());
+    }
     difference_type idx = pos - this->cbegin();
     if (_size == _capacity) {
       reserve(_capacity * 2);
     }
 
-    alloc_traits::construct(_alloc, _data + _size,
-                            std::move_if_noexcept(*(_data + _size - 1)));
-
     iterator modified_pos = this->begin() + idx;
-    std::move_backward(modified_pos, this->end() - 1, this->end());
-    *modified_pos = value;
+    if (_size > 0) {
+
+      alloc_traits::construct(_alloc, _data + _size,
+                              std::move_if_noexcept(*(_data + _size - 1)));
+
+      std::move_backward(modified_pos, this->end() - 1, this->end());
+      *modified_pos = value;
+
+    } else {
+      alloc_traits::construct(_alloc, _data, T{value});
+    }
 
     _size++;
     return modified_pos;
   }
 
   iterator insert(const_iterator pos, T &&value) {
+    if (pos > this->cend()) {
+      return this->begin() + (pos - this->cbegin());
+    }
     difference_type idx = pos - this->cbegin();
     if (_size == _capacity) {
       reserve(_capacity * 2);
     }
 
-    alloc_traits::construct(_alloc, _data + _size,
-                            std::move_if_noexcept(*(_data + _size - 1)));
-
     iterator modified_pos = this->begin() + idx;
-    std::move_backward(modified_pos, this->end() - 1, this->end());
-    *modified_pos = std::move_if_noexcept(value);
+    if (_size > 0) {
+      alloc_traits::construct(_alloc, _data + _size,
+                              std::move_if_noexcept(*(_data + _size - 1)));
+      std::move_backward(modified_pos, this->end() - 1, this->end());
+      *modified_pos = std::move_if_noexcept(value);
+    } else {
+      alloc_traits::construct(_alloc, _data, std::move_if_noexcept(value));
+    }
 
     _size++;
     return modified_pos;
   }
 
   iterator insert(const_iterator pos, size_type count, const T &value) {
+    if (pos > this->cend()) {
+      return this->begin() + (pos - this->cbegin());
+    }
     difference_type idx = pos - this->cbegin();
     while (_size + (size_t)count > _capacity) {
       reserve(_capacity * 2);
     }
 
-    for (size_t i = 0; i < count; ++i) {
-      alloc_traits::construct(
-          _alloc, _data + _size + i,
-          std::move_if_noexcept(*(_data + _size - count + i)));
+    for (size_t i = 0; i < (size_t)count; ++i) {
+      pointer dst = _data + _size + i;
+      pointer src = _data + _size - count + i;
+      // keep that area uninitialised since there's nothing to move
+      if (iterator(src) < this->begin())
+        continue;
+      alloc_traits::construct(_alloc, dst, std::move_if_noexcept(*src));
     }
 
     iterator modified_pos = this->begin() + idx;
-    std::move_backward(modified_pos, this->end() - (difference_type)count,
-                       this->end() - (difference_type)count + 1);
+    iterator src_last = this->end() - (difference_type)count;
+    // only move initialised memory
+    if (src_last > modified_pos) {
+      std::move_backward(modified_pos, src_last,
+                         this->end() - (difference_type)count + 1);
+    }
 
-    std::fill(modified_pos, modified_pos + (difference_type)count, value);
+    for (difference_type i = 0; i < (difference_type)count; ++i) {
+      iterator insertion_pos = modified_pos + i;
+      if (insertion_pos >= this->end()) {
+        alloc_traits::construct(_alloc, std::addressof(*insertion_pos),
+                                T{value});
+      } else {
+        *insertion_pos = value;
+      }
+    }
 
     _size += count;
     return modified_pos;
@@ -306,6 +339,9 @@ public:
 
   template <std::input_iterator InputIt>
   iterator insert(const_iterator pos, InputIt first, InputIt last) {
+    if (pos > this->cend()) {
+      return this->begin() + (pos - this->cbegin());
+    }
     difference_type idx = pos - this->cbegin();
     difference_type count = last - first;
     while (_size + (size_t)count > _capacity) {
@@ -313,20 +349,31 @@ public:
     }
 
     for (size_t i = 0; i < (size_t)count; ++i) {
-      alloc_traits::construct(
-          _alloc, _data + _size + i,
-          std::move_if_noexcept(*(_data + _size - count + i)));
+      pointer dst = _data + _size + i;
+      pointer src = _data + _size - count + i;
+      // keep that area uninitialised since there's nothing to move
+      if (iterator(src) < this->begin())
+        continue;
+      alloc_traits::construct(_alloc, dst, std::move_if_noexcept(*src));
     }
 
     iterator modified_pos = this->begin() + idx;
-    std::move_backward(modified_pos, this->end() - (difference_type)count,
-                       this->end() - (difference_type)count + 1);
+    iterator src_last = this->end() - (difference_type)count;
+    // only move initialised memory
+    if (src_last > modified_pos) {
+      std::move_backward(modified_pos, src_last,
+                         this->end() - (difference_type)count + 1);
+    }
 
-    iterator end_point = this->end() + count;
-    for (iterator start_point = modified_pos;
-         start_point != end_point && first != last; ++first) {
-      *start_point = *first;
-      start_point++;
+    for (difference_type i = 0; i < count; ++i) {
+      iterator insertion_pos = modified_pos + i;
+      InputIt src_pos = first + i;
+      if (insertion_pos >= this->end()) {
+        alloc_traits::construct(_alloc, std::addressof(*insertion_pos),
+                                T{*src_pos});
+      } else {
+        *insertion_pos = *src_pos;
+      }
     }
 
     _size += (size_t)count;
@@ -339,21 +386,32 @@ public:
 
   template <class... Args>
   iterator emplace(const_iterator pos, Args &&...args) {
+    if (pos > this->cend()) {
+      return this->begin() + (pos - this->cbegin());
+    }
     difference_type idx = pos - this->cbegin();
     if (_size == _capacity) {
       reserve(_capacity * 2);
     }
 
-    alloc_traits::construct(_alloc, _data + _size,
-                            std::move_if_noexcept(*(_data + _size + 1)));
-
     iterator modified_pos = this->begin() + idx;
-    std::move_backward(modified_pos, this->end() - 1, this->end());
+    if (_size > 0) {
 
-    // pos should be pointing to a valid value in the vector, i dont think
-    // emplaceconstructible is actually required
-    T new_value = T{std::forward<Args>(args)...};
-    *modified_pos = std::move(new_value);
+      alloc_traits::construct(_alloc, _data + _size,
+                              std::move_if_noexcept(*(_data + _size - 1)));
+
+      std::move_backward(modified_pos, this->end() - 1, this->end());
+
+      // pos should be pointing to a valid value in the vector, i dont think
+      // emplaceconstructible is actually required
+      T new_value = T{std::forward<Args>(args)...};
+      *modified_pos = std::move(new_value);
+
+    } else {
+      alloc_traits::construct(
+          _alloc, _data, std::move_if_noexcept(std::forward<Args>(args)...));
+    }
+
     _size++;
     return modified_pos;
   }

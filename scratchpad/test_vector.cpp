@@ -18,6 +18,10 @@ std::string print_type() {
   return res;
 }
 
+struct Foo {
+  void bar() { std::cout << "FooBar" << std::endl; }
+};
+
 int main() {
   rwstd::Vector<int> test{5};
   for (int i = 0; i < 5; ++i) {
@@ -74,5 +78,13 @@ int main() {
     std::cout << move_two[i] << " ";
   }
 
-  std::cout << std::endl;
+  std::cout << "after emplaceE" << std::endl;
+
+  rwstd::Vector<Foo *> function_ptrs(4, new Foo);
+  std::cout << "constructed" << std::endl;
+  function_ptrs[1]->bar();
+
+  rwstd::Vector<std::string> test_string;
+  test_string.insert(test_string.cbegin(), "hello");
+  std::cout << test_string[0] << std::endl;
 }
